@@ -73,15 +73,16 @@ cat debian/control.template | \
     sed "s/@ARCH@/${ARCH}/g" > "$BUILD_DIR/DEBIAN/control.tmp"
 
 # Replace @FEATURES@ with actual features (handling multiline)
-awk -v features="$FEATURES" '
-    /@FEATURES@/ {
-        print features
-        next
-    }
-    { print }
-' "$BUILD_DIR/DEBIAN/control.tmp" > "$BUILD_DIR/DEBIAN/control"
+# Use a temporary file to avoid awk multiline issues
+echo "$FEATURES" > "$BUILD_DIR/DEBIAN/features.tmp"
 
-rm -f "$BUILD_DIR/DEBIAN/control.tmp"
+# Use sed to replace @FEATURES@ with the content of features.tmp
+sed '/@FEATURES@/ {
+    r '"$BUILD_DIR"'/DEBIAN/features.tmp
+    d
+}' "$BUILD_DIR/DEBIAN/control.tmp" > "$BUILD_DIR/DEBIAN/control"
+
+rm -f "$BUILD_DIR/DEBIAN/control.tmp" "$BUILD_DIR/DEBIAN/features.tmp"
 
 # Copy maintainer scripts
 cp debian/postinst "$BUILD_DIR/DEBIAN/"
