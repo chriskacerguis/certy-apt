@@ -385,10 +385,14 @@ echo "Installed-Size: $INSTALLED_SIZE" >> "$BUILD_DIR/DEBIAN/control"
 # Build the package
 dpkg-deb --build "$BUILD_DIR"
 
-# Move to build directory
-mv "$BUILD_DIR.deb" "build/certy_${DEB_VERSION}_${ARCH}.deb"
+# The output is already at $BUILD_DIR.deb which is build/certy_VERSION_ARCH.deb
+# No need to move, just verify it exists
+if [ ! -f "$BUILD_DIR.deb" ]; then
+    echo "Error: Package file not created"
+    exit 1
+fi
 
-echo "Package built successfully: build/certy_${DEB_VERSION}_${ARCH}.deb"
+echo "Package built successfully: $BUILD_DIR.deb"
 
 # Clean up
 rm -rf "$BUILD_DIR"
@@ -396,4 +400,4 @@ rm -rf "$BUILD_DIR"
 # Show package info
 echo ""
 echo "Package information:"
-dpkg-deb --info "build/certy_${DEB_VERSION}_${ARCH}.deb"
+dpkg-deb --info "$BUILD_DIR.deb"
