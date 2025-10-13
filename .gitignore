@@ -1,0 +1,40 @@
+# Build artifacts
+build/
+*.deb
+*.dsc
+*.changes
+*.buildinfo
+
+# Repository files (managed by GitHub Actions)
+dists/
+pool/
+*.gpg
+*.asc
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+
+# Backup files
+*.bak
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
+.tmp/

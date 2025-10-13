@@ -1,0 +1,309 @@
+name: Build and Publish APT Repository
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Certy version to package (e.g., v1.1.0)'
+        required: true
+        type: string
+  schedule:
+    # Check for new releases daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/build-and-publish.yml'
+      - 'scripts/**'
+      - 'debian/**'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  check-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      needs_build: ${{ steps.check-version.outputs.needs_build }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get latest Certy release
+        id: get-version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION=$(curl -s https://api.github.com/repos/chriskacerguis/certy/releases/latest | jq -r .tag_name)
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Latest version: $VERSION"
+      
+      - name: Check if version needs building
+        id: check-version
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          if git tag | grep -q "^built-$VERSION$"; then
+            echo "needs_build=false" >> $GITHUB_OUTPUT
+            echo "Version $VERSION already built"
+          else
+            echo "needs_build=true" >> $GITHUB_OUTPUT
+            echo "Version $VERSION needs building"
+          fi
+
+  build-packages:
+    needs: check-release
+    if: needs.check-release.outputs.needs_build == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+      
+      - name: Set up build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev debhelper devscripts fakeroot
+      
+      - name: Download Certy binary
+        run: |
+          VERSION="${{ needs.check-release.outputs.version }}"
+          ARCH="${{ matrix.arch }}"
+          
+          # Map Debian arch to Certy release arch
+          case "$ARCH" in
+            amd64) RELEASE_ARCH="linux-amd64" ;;
+            arm64) RELEASE_ARCH="linux-arm64" ;;
+            armhf) RELEASE_ARCH="linux-arm" ;;
+            *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+          esac
+          
+          DOWNLOAD_URL="https://github.com/chriskacerguis/certy/releases/download/$VERSION/certy-$RELEASE_ARCH"
+          echo "Downloading from: $DOWNLOAD_URL"
+          
+          mkdir -p build
+          curl -L -o "build/certy-$ARCH" "$DOWNLOAD_URL"
+          chmod +x "build/certy-$ARCH"
+          
+          # Verify the binary works
+          ./build/certy-$ARCH --version || echo "Binary version check failed (may be expected)"
+      
+      - name: Build DEB package
+        run: |
+          VERSION="${{ needs.check-release.outputs.version }}"
+          ARCH="${{ matrix.arch }}"
+          
+          # Remove 'v' prefix from version for Debian
+          DEB_VERSION="${VERSION#v}"
+          
+          ./scripts/build-deb.sh "$VERSION" "$ARCH"
+      
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: certy-${{ matrix.arch }}-deb
+          path: build/*.deb
+          retention-days: 5
+
+  publish-repository:
+    needs: [check-release, build-packages]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+      
+      - name: Download all package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: packages
+      
+      - name: Set up GPG
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 -d | gpg --import
+          echo "GPG key imported successfully"
+      
+      - name: Checkout gh-pages branch
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          
+          # Create gh-pages branch if it doesn't exist
+          if git ls-remote --heads origin gh-pages | grep gh-pages; then
+            git fetch origin gh-pages
+            git checkout gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rf . || true
+            mkdir -p pool/main/c/certy dists/stable/main/binary-amd64
+          fi
+      
+      - name: Copy packages to repository
+        run: |
+          # Ensure directory structure exists
+          mkdir -p pool/main/c/certy dists/stable/main/binary-amd64
+          
+          # Copy all .deb files
+          find packages -name "*.deb" -exec cp {} pool/main/c/certy/ \;
+          
+          # List packages
+          ls -lh pool/main/c/certy/
+      
+      - name: Generate repository metadata
+        run: |
+          cd dists/stable/main/binary-amd64
+          
+          # Generate Packages file
+          dpkg-scanpackages -m ../../../../pool/main/c/certy /dev/null > Packages
+          gzip -k -f Packages
+          
+          cd ../..
+          
+          # Generate Release file
+          cat > Release <<EOF
+          Origin: Certy APT Repository
+          Label: Certy
+          Suite: stable
+          Codename: stable
+          Version: 1.0
+          Architectures: amd64
+          Components: main
+          Description: APT repository for Certy Certificate Authority CLI
+          Date: $(date -Ru)
+          EOF
+          
+          # Add checksums
+          echo "MD5Sum:" >> Release
+          find main -type f -exec md5sum {} \; | sed 's|main/| |' | awk '{print " " $1 " " $3 " " $2}' >> Release
+          
+          echo "SHA1:" >> Release
+          find main -type f -exec sha1sum {} \; | sed 's|main/| |' | awk '{print " " $1 " " $3 " " $2}' >> Release
+          
+          echo "SHA256:" >> Release
+          find main -type f -exec sha256sum {} \; | sed 's|main/| |' | awk '{print " " $1 " " $3 " " $2}' >> Release
+      
+      - name: Sign repository
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          cd dists/stable
+          
+          # Sign the Release file
+          gpg --default-key "${{ secrets.GPG_KEY_ID }}" \
+              --batch --yes --passphrase "$GPG_PASSPHRASE" \
+              --pinentry-mode loopback \
+              -abs -o Release.gpg Release
+          
+          # Create InRelease file
+          gpg --default-key "${{ secrets.GPG_KEY_ID }}" \
+              --batch --yes --passphrase "$GPG_PASSPHRASE" \
+              --pinentry-mode loopback \
+              --clearsign -o InRelease Release
+      
+      - name: Export public GPG key
+        run: |
+          gpg --armor --export "${{ secrets.GPG_KEY_ID }}" > KEY.gpg
+      
+      - name: Create index.html
+        run: |
+          cat > index.html <<'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Certy APT Repository</title>
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                      line-height: 1.6;
+                      max-width: 800px;
+                      margin: 0 auto;
+                      padding: 20px;
+                      color: #333;
+                  }
+                  h1 { color: #2c3e50; }
+                  pre {
+                      background: #f4f4f4;
+                      border: 1px solid #ddd;
+                      border-left: 3px solid #2c3e50;
+                      padding: 15px;
+                      overflow-x: auto;
+                  }
+                  code {
+                      background: #f4f4f4;
+                      padding: 2px 5px;
+                      border-radius: 3px;
+                  }
+                  .warning {
+                      background: #fff3cd;
+                      border-left: 4px solid #ffc107;
+                      padding: 12px;
+                      margin: 20px 0;
+                  }
+              </style>
+          </head>
+          <body>
+              <h1>Certy APT Repository</h1>
+              <p>Official APT repository for <a href="https://github.com/chriskacerguis/certy">Certy</a>, a lightweight Certificate Authority CLI tool.</p>
+              
+              <h2>Quick Setup</h2>
+              <pre><code># Add repository GPG key
+          curl -fsSL https://chriskacerguis.github.io/certy-apt/KEY.gpg | sudo gpg --dearmor -o /usr/share/keyrings/certy-archive-keyring.gpg
+
+          # Add repository
+          echo "deb [signed-by=/usr/share/keyrings/certy-archive-keyring.gpg arch=amd64] https://chriskacerguis.github.io/certy-apt stable main" | sudo tee /etc/apt/sources.list.d/certy.list
+
+          # Update and install
+          sudo apt update
+          sudo apt install certy</code></pre>
+              
+              <h2>Verify Installation</h2>
+              <pre><code>certy --version</code></pre>
+              
+              <h2>Available Packages</h2>
+              <ul>
+                  <li><a href="pool/main/c/certy/">Browse packages</a></li>
+                  <li><a href="dists/stable/main/binary-amd64/Packages">Package index</a></li>
+              </ul>
+              
+              <h2>Documentation</h2>
+              <ul>
+                  <li><a href="https://github.com/chriskacerguis/certy">Certy Documentation</a></li>
+                  <li><a href="https://github.com/chriskacerguis/certy-apt">Repository Source</a></li>
+              </ul>
+          </body>
+          </html>
+          EOF
+      
+      - name: Commit and push
+        run: |
+          git add -A
+          git commit -m "Update repository for version ${{ needs.check-release.outputs.version }}" || echo "No changes to commit"
+          git push origin gh-pages
+          
+          # Tag this build
+          git tag "built-${{ needs.check-release.outputs.version }}"
+          git push origin "built-${{ needs.check-release.outputs.version }}"
+      
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          publish_branch: gh-pages
+          force_orphan: false

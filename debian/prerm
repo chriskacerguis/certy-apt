@@ -1,0 +1,22 @@
+#!/bin/sh
+set -e
+
+# Pre-removal script for certy
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        echo "Removing certy..."
+        # Note: We don't remove ~/.certy directory as it contains user's CA
+        # and certificates. Users should manually remove it if desired.
+    ;;
+
+    failed-upgrade)
+    ;;
+
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+exit 0

@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e
+
+# Post-installation script for certy
+
+# Make sure the binary is executable
+chmod +x /usr/bin/certy
+
+# Print installation message
+echo "Certy has been installed successfully!"
+echo "Run 'certy --version' to verify the installation."
+echo ""
+echo "To get started:"
+echo "  1. Initialize the CA: certy -install"
+echo "  2. Generate a certificate: certy example.com"
+echo ""
+echo "Visit https://github.com/chriskacerguis/certy for documentation."
+
+exit 0

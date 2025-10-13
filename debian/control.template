@@ -1,0 +1,15 @@
+Package: certy
+Version: @VERSION@
+Section: utils
+Priority: optional
+Architecture: @ARCH@
+Maintainer: Chris Kacerguis <chris@chriskacerguis.com>
+Homepage: https://github.com/chriskacerguis/certy
+Description: Simple Certificate Authority CLI
+ Certy is a lightweight, user-friendly command-line tool for managing your own
+ Certificate Authority and generating certificates for development and testing.
+ .
+ @FEATURES@
+ .
+ This tool is designed for development and testing purposes and follows CA
+ best practices with a root CA and intermediate CA structure.
