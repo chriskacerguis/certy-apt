@@ -144,8 +144,23 @@ Additional architectures (arm64, armhf) can be added as needed.
 Contributions are welcome! If you encounter any issues with the APT repository or packaging:
 
 1. Check existing [issues](https://github.com/chriskacerguis/certy-apt/issues)
-2. Open a new issue with details about your environment and the problem
-3. Submit a pull request with fixes or improvements
+2. See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues and solutions
+3. Open a new issue with details about your environment and the problem
+4. Submit a pull request with fixes or improvements
+
+## Troubleshooting
+
+Having issues? Check these guides:
+
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Solutions for common problems
+- **[Secrets Setup Guide](docs/SECRETS_SETUP.md)** - How to configure GPG signing
+- **[Setup Guide](docs/SETUP.md)** - Complete repository setup instructions
+- **[Testing Guide](docs/TESTING.md)** - How to test packages locally
+
+Common issues:
+- **GPG errors**: See [SECRETS_SETUP.md](docs/SECRETS_SETUP.md)
+- **Build failures**: See [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+- **Package not found**: Check repository configuration and GitHub Pages status
 
 ## Security
 
