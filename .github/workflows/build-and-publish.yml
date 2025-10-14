@@ -133,7 +133,16 @@ jobs:
           path: packages
       
       - name: Set up GPG
+        if: ${{ secrets.GPG_PRIVATE_KEY != '' }}
         run: |
+          # Check if GPG key secret is set
+          if [ -z "${{ secrets.GPG_PRIVATE_KEY }}" ]; then
+            echo "Warning: GPG_PRIVATE_KEY secret is not set"
+            echo "Repository will be published without signing"
+            exit 0
+          fi
+          
+          # Import the GPG key
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 -d | gpg --import
           echo "GPG key imported successfully"
       
@@ -197,9 +206,16 @@ jobs:
           find main -type f -exec sha256sum {} \; | sed 's|main/| |' | awk '{print " " $1 " " $3 " " $2}' >> Release
       
       - name: Sign repository
+        if: ${{ secrets.GPG_PRIVATE_KEY != '' && secrets.GPG_KEY_ID != '' }}
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
+          # Check if we have GPG keys available
+          if ! gpg --list-keys "${{ secrets.GPG_KEY_ID }}" 2>/dev/null; then
+            echo "Warning: GPG key not found, skipping signing"
+            exit 0
+          fi
+          
           cd dists/stable
           
           # Sign the Release file
@@ -215,8 +231,16 @@ jobs:
               --clearsign -o InRelease Release
       
       - name: Export public GPG key
+        if: ${{ secrets.GPG_PRIVATE_KEY != '' && secrets.GPG_KEY_ID != '' }}
         run: |
-          gpg --armor --export "${{ secrets.GPG_KEY_ID }}" > KEY.gpg
+          # Export public key if available
+          if gpg --list-keys "${{ secrets.GPG_KEY_ID }}" 2>/dev/null; then
+            gpg --armor --export "${{ secrets.GPG_KEY_ID }}" > KEY.gpg
+            echo "Public key exported successfully"
+          else
+            echo "Warning: GPG key not available, creating placeholder"
+            echo "# GPG key not configured" > KEY.gpg
+          fi
       
       - name: Create index.html
         run: |
