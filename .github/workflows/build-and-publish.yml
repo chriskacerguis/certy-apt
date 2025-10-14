@@ -133,7 +133,6 @@ jobs:
           path: packages
       
       - name: Set up GPG
-        if: secrets.GPG_PRIVATE_KEY != ''
         run: |
           # Check if GPG key secret is set
           if [ -z "${{ secrets.GPG_PRIVATE_KEY }}" ]; then
@@ -206,11 +205,15 @@ jobs:
           find main -type f -exec sha256sum {} \; | sed 's|main/| |' | awk '{print " " $1 " " $3 " " $2}' >> Release
       
       - name: Sign repository
-        if: secrets.GPG_PRIVATE_KEY != '' && secrets.GPG_KEY_ID != ''
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           # Check if we have GPG keys available
+          if [ -z "${{ secrets.GPG_KEY_ID }}" ]; then
+            echo "Warning: GPG_KEY_ID not set, skipping signing"
+            exit 0
+          fi
+          
           if ! gpg --list-keys "${{ secrets.GPG_KEY_ID }}" 2>/dev/null; then
             echo "Warning: GPG key not found, skipping signing"
             exit 0
@@ -231,10 +234,9 @@ jobs:
               --clearsign -o InRelease Release
       
       - name: Export public GPG key
-        if: secrets.GPG_PRIVATE_KEY != '' && secrets.GPG_KEY_ID != ''
         run: |
           # Export public key if available
-          if gpg --list-keys "${{ secrets.GPG_KEY_ID }}" 2>/dev/null; then
+          if [ -n "${{ secrets.GPG_KEY_ID }}" ] && gpg --list-keys "${{ secrets.GPG_KEY_ID }}" 2>/dev/null; then
             gpg --armor --export "${{ secrets.GPG_KEY_ID }}" > KEY.gpg
             echo "Public key exported successfully"
           else
