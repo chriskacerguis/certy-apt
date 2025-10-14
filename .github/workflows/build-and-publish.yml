@@ -141,8 +141,28 @@ jobs:
             exit 0
           fi
           
-          # Import the GPG key
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 -d | gpg --import
+          # Configure GPG for non-interactive use
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          echo "use-agent" > ~/.gnupg/gpg.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          
+          # Configure GPG agent
+          cat > ~/.gnupg/gpg-agent.conf << EOF
+          allow-loopback-pinentry
+          max-cache-ttl 7200
+          default-cache-ttl 7200
+          EOF
+          
+          # Reload GPG agent
+          gpg-connect-agent reloadagent /bye || true
+          
+          # Import the GPG key with passphrase from secret
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | base64 -d | \
+            gpg --batch --yes --pinentry-mode loopback \
+                --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+                --import
+          
           echo "GPG key imported successfully"
       
       - name: Checkout gh-pages branch

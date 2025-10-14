@@ -84,7 +84,9 @@ cat private-key-base64.txt
 
 - **Name**: `GPG_PASSPHRASE`
 - **Value**: Your GPG key passphrase
-  - If you didn't set a passphrase, leave this **empty** (just add the secret with no value)
+  - **IMPORTANT**: You MUST add this secret even if your key has no passphrase!
+  - If you didn't set a passphrase, add the secret but leave the value **empty** (blank)
+  - The workflow requires this secret to exist for non-interactive GPG operations
 - Click **Add secret**
 
 ### 5. Export Public Key (for users)
