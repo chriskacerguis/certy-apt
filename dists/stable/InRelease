@@ -1,0 +1,28 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Origin: Certy APT Repository
+Label: Certy
+Suite: stable
+Codename: stable
+Version: 1.0
+Architectures: amd64
+Components: main
+Description: APT repository for Certy Certificate Authority CLI
+Date: Tue, 14 Oct 2025 13:58:09 +0000
+MD5Sum:
+ d3eaa869f55c0ee72976c42cda2df380  binary-amd64/Packages
+ 4681c4407066a9bd813ae92c50cacbd8  binary-amd64/Packages.gz
+SHA1:
+ c206e2ed471afd97f772071469fcdf432184fc5a  binary-amd64/Packages
+ 0a6085540b22a1e59bb48e1fa4a6148f6e90d175  binary-amd64/Packages.gz
+SHA256:
+ 3f4e2a809398eb6139153f30f0dff904b9ea24ad827bbe87d00b6f9a698ce9e2  binary-amd64/Packages
+ d337202597a3d04458d033ffa21da18ae487db419b71714a6209b8442866b8a5  binary-amd64/Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iHUEARYKAB0WIQTzV8Cg+Z/JlP9MqL3hn+iDWB6AzwUCaO5W8gAKCRDhn+iDWB6A
+zwNkAQD1bPtJs5pcgpdWWodfnZ4/MZ9BWPTm+XPKM572nMzROgEAifuwquXYxb9F
+xVUmfADOQ4irVc02bVWpvlTYvaTQlg8=
+=oU8c
+-----END PGP SIGNATURE-----

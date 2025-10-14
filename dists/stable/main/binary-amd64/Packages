@@ -1,0 +1,28 @@
+Package: certy
+Version: 1.1.0
+Architecture: amd64
+Maintainer: Chris Kacerguis <chris@chriskacerguis.com>
+Installed-Size: 3784
+Filename: ../../../../pool/main/c/certy/certy_1.1.0_amd64.deb
+Size: 1472690
+MD5sum: b8e68c27e2949f2cfab49d5eb87127cb
+SHA1: 5523a99068c35887c8b32e6ba0596c9ad8cb3b76
+SHA256: c50d2e578f1eab1c8cdcc17033800420027fdda8afc27cdb3ed786f2462071ff
+Section: utils
+Priority: optional
+Homepage: https://github.com/chriskacerguis/certy
+Description: Simple Certificate Authority CLI
+ Certy is a lightweight, user-friendly command-line tool for managing your own
+ Certificate Authority and generating certificates for development and testing.
+ .
+  * **Simple CA Management**: Create and manage a root CA with intermediate CA in one command
+  * **Multiple Certificate Types**: TLS server, client authentication, and S/MIME certificates
+  * **Smart Input Detection**: Automatically detects domains, IPs, and email addresses
+  * **ECDSA Support**: Generate certificates with ECDSA keys for modern crypto
+  * **PKCS#12 Export**: Create `.p12`/`.pfx` files for legacy application compatibility
+  * **CSR Support**: Generate certificates from existing Certificate Signing Requests
+  * **No Dependencies**: Single binary with no external runtime dependencies
+ .
+ This tool is designed for development and testing purposes and follows CA
+ best practices with a root CA and intermediate CA structure.
+
