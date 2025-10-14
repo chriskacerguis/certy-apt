@@ -4,6 +4,40 @@ This guide helps resolve common problems with the Certy APT repository setup.
 
 ## GitHub Actions Failures
 
+### GPG Import Fails: "Inappropriate ioctl for device"
+
+**Error Message**:
+```
+gpg: key E19FE883581E80CF/E19FE883581E80CF: error sending to agent: Inappropriate ioctl for device
+gpg: error reading '[stdin]': Inappropriate ioctl for device
+gpg: import from '[stdin]' failed: Inappropriate ioctl for device
+```
+
+**Cause**: GPG is trying to prompt for a passphrase interactively, but GitHub Actions has no TTY (terminal).
+
+**Solution**: This is now fixed in the workflow! The workflow configures GPG for non-interactive use with:
+- `--batch --yes` flags for non-interactive operation
+- `--pinentry-mode loopback` to allow passphrase from command line
+- GPG agent configuration for loopback pinentry
+
+**Action Required**: 
+1. Make sure you have added the `GPG_PASSPHRASE` secret (even if empty!)
+2. Re-run the workflow - it should now work
+
+**Manual Fix** (if needed):
+```bash
+# The workflow now automatically does this:
+mkdir -p ~/.gnupg
+echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+gpg-connect-agent reloadagent /bye
+
+# Import with passphrase
+echo "$BASE64_KEY" | base64 -d | \
+  gpg --batch --yes --pinentry-mode loopback \
+      --passphrase "$PASSPHRASE" --import
+```
+
 ### GPG Import Fails: "base64: invalid input"
 
 **Error Message**:
